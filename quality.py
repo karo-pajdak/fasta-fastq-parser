@@ -1,6 +1,18 @@
 from collections import defaultdict
+from parser import SequenceRecord
+from typing import List, Optional, Dict, Union
 
-def phred_to_numeric(quality_string, phred_offset):
+def resolve_phred_offset(records: List[SequenceRecord], offset: Optional[int]) -> int:
+    """Returns a valid phred offset (33 or 64), detecting it from records if not provided.
+Raises ValueError if detection fails or is ambiguous."""
+    if offset is None:
+        offset = detect_phred_encoding(records)
+    if offset not in [33, 64]:
+        raise ValueError("Cannot compute stats due to phred issue.")
+    return offset
+
+def phred_to_numeric(quality_string: str, phred_offset: int) -> List[int]:
+    """Converts sequence quality score from ASCII to numeric based on phred_offset."""
     if phred_offset not in [33, 64]:
         raise ValueError("Invalid phred offset")
     numeric_values = []
@@ -8,15 +20,17 @@ def phred_to_numeric(quality_string, phred_offset):
         numeric_values.append(ord(char) - phred_offset)
     return numeric_values
 
-def numeric_to_phred(numeric_scores, phred_offset):
+def numeric_to_phred(numeric_scores: List[int], phred_offset: int) -> str:
+    """Converts sequence quality score from numeric to ASCII based on phred_offset."""
     if phred_offset not in [33, 64]:
         raise ValueError("Invalid phred offset")
-    quality_string = []
+    phred = ""
     for num in numeric_scores:
-        quality_string.append(chr(num+phred_offset))
-    return quality_string
+        phred += (chr(num+phred_offset))
+    return phred
 
-def detect_phred_encoding(records): 
+def detect_phred_encoding(records: List[SequenceRecord]) -> Union[str,int]:
+    """Detects encoding based on quality sequence in records list. Returns 33, 64, or unknown/ambiguous."""
     min_value = 130 #arbitrary high number
     max_value = 0 
     for seq in records:
@@ -34,7 +48,11 @@ def detect_phred_encoding(records):
     else:
         return "Unknown"
 
-def calculate_average_quality(records, phred_offset):
+def calculate_average_quality(
+        records: List[SequenceRecord], 
+        phred_offset: Optional[int]) -> float:
+    """Calculates the average quality of all sequences in a list of records."""
+    phred_offset = resolve_phred_offset(records, phred_offset)
     total_score = 0
     total_bases = 0 
     for seq in records:
@@ -42,13 +60,16 @@ def calculate_average_quality(records, phred_offset):
         quality_numeric = phred_to_numeric(quality, phred_offset)
         total_score += sum(quality_numeric)
         total_bases += len(quality_numeric)
-    if total_bases != 0:
-        average = round((total_score / total_bases),1)
-    else:
-        average = "Cannot compute on empty file."
+    if total_bases == 0:
+        raise ValueError("Cannot compute on empty file.")
+    average = round((total_score / total_bases),1)
     return average
 
-def analyze_quality_by_position(records, phred_offset):
+def analyze_quality_by_position(
+        records: List[SequenceRecord], 
+        phred_offset: Optional[int]) -> List[float]:
+    """Calculates the average quality score for each position across all sequences, returning a list of averages."""
+    phred_offset = resolve_phred_offset(records, phred_offset)
     position_sums = {}
     position_counts = {}
     for seq in records:
@@ -62,7 +83,11 @@ def analyze_quality_by_position(records, phred_offset):
         average_per_position.append(round(position_sums[i] / position_counts[i],1))
     return average_per_position
 
-def get_average_quality_per_sequence(records, phred_offset):
+def get_average_quality_per_sequence(
+        records: List[SequenceRecord], 
+        phred_offset: Optional[int]) -> Dict[str, float]:
+    """Calculates the average quality score per sequence in a list of sequence records, returning a dictionary of averages."""
+    phred_offset = resolve_phred_offset(records, phred_offset)
     average_quality = {}
     for seq in records:
         quality = seq.quality
@@ -74,7 +99,11 @@ def get_average_quality_per_sequence(records, phred_offset):
         average_quality[seq.id] = average_seq
     return average_quality
 
-def get_quality_distribution(records, phred_offset):
+def get_quality_distribution(
+        records: List[SequenceRecord], 
+        phred_offset: Optional[int]) -> Dict[int, int]:
+    """Counts the occurrences of each quality score in a list of sequence records."""
+    phred_offset = resolve_phred_offset(records, phred_offset)
     distribution = defaultdict(int)
     for seq in records:
         quality = seq.quality
@@ -83,35 +112,38 @@ def get_quality_distribution(records, phred_offset):
             distribution[score] += 1
     return dict(sorted(distribution.items())) 
 
-def find_low_quality_positions(records, threshold, phred_offset):
+def find_low_quality_positions(
+        records: List[SequenceRecord], 
+        threshold: int, phred_offset: Optional[int]) -> Dict[int, List[int]]:
+    """Finds the positions of each read below given threshold in a list of sequence records."""
+    phred_offset = resolve_phred_offset(records, phred_offset)
     low_quality = {}
     for seq in records:
         quality = seq.quality
-        id = seq.id
+        seq_id = seq.id
         numeric = phred_to_numeric(quality, phred_offset)
         low_quality_positions = []
         for index, score in enumerate(numeric):
             if score < threshold:
                 low_quality_positions.append(index)
-        low_quality[id] = low_quality_positions
+        low_quality[seq_id] = low_quality_positions
     return low_quality
 
-def get_quality_stats(records, phred_offset, threshold):
-    quality_stats = []
-    if phred_offset is None:
-        phred_offset = detect_phred_encoding(records)
-    if phred_offset not in [33,64]:
-        return "Cannot compute stats due to phred issue."
-    else:
-        overall_avg = calculate_average_quality(records, phred_offset)
-        avg_by_position = analyze_quality_by_position(records, phred_offset)
-        distribution = get_quality_distribution(records, phred_offset)
-        low_quality = find_low_quality_positions(records, threshold, phred_offset)
-    quality_stats.append({
+def get_quality_stats(
+    records: List[SequenceRecord],
+    phred_offset: Optional[int],
+    threshold: int
+) -> Dict[str, Union[float, int, str, Dict[int, int], List[float], int]]:
+    """Returns a dictionary summarizing quality stats."""
+    phred_offset = resolve_phred_offset(records, phred_offset)
+    overall_avg = calculate_average_quality(records, phred_offset)
+    avg_by_position = analyze_quality_by_position(records, phred_offset)
+    distribution = get_quality_distribution(records, phred_offset)
+    low_quality = find_low_quality_positions(records, threshold, phred_offset)
+    return {
         "phred_encoding": f"Phred+{phred_offset}",
         "average_quality_overall": round(overall_avg, 2),
         "average_quality_by_position": avg_by_position,
         "quality_score_distribution": distribution,
         "low_quality_reads": low_quality
-    })
-    return quality_stats
+    }
