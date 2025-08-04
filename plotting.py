@@ -4,8 +4,11 @@ import numpy as np
 import os 
 from stats import calculate_length_distributions
 from quality import get_quality_distribution
+from parser import SequenceRecord
+from typing import List
 
-def plot_length_histogram(lengths, output_path):
+def plot_length_histogram(lengths: List[int], output_path: str) -> None:
+    """Generates and saves a histogram of sequence lengths."""
     output_path = os.path.expanduser(output_path)
     folder = os.path.dirname(output_path)
     if folder:
@@ -20,7 +23,8 @@ def plot_length_histogram(lengths, output_path):
     plt.savefig(output_path)
     plt.close()
 
-def plot_length_distribution(lengths, output_path, bin_size):
+def plot_length_distribution(lengths: List[int], output_path: str, bin_size: int) -> None:
+    """Generates and saves a binned bar graph of sequence lengths."""
     length_distribution = calculate_length_distributions(lengths, bin_size)
     if not length_distribution:
         print("No lengths provided. Nothing to graph.")
@@ -41,7 +45,8 @@ def plot_length_distribution(lengths, output_path, bin_size):
     plt.savefig(output_path)
     plt.close()
 
-def plot_cumulative_length(lengths, output_path):
+def plot_cumulative_length(lengths: List[int], output_path: str) -> None:
+    """Generates and saves a line plot of cumulative sequence length."""
     if not lengths:
         print("No lengths provided. Nothing to graph.")
         return
@@ -61,10 +66,12 @@ def plot_cumulative_length(lengths, output_path):
     plt.savefig(output_path)
     plt.close()
 
-def plot_quality_histogram(records, phred_offset, output_path):
+def plot_quality_histogram(records: List[SequenceRecord], phred_offset: int, output_path: str) -> None:
+    """Generates and saves a histogram of sequence quality scores."""
     quality_distribution = get_quality_distribution(records, phred_offset)
     if not quality_distribution:
         print("No sequences provided. Nothing to graph.")
+        return
     output_path = os.path.expanduser(output_path)
     folder = os.path.dirname(output_path)
     if folder:
