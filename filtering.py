@@ -37,6 +37,10 @@ def get_length_filter_preview(records: List[SequenceRecord], min_length: int, ma
 
 def filter_by_quality(records: List[SequenceRecord], min_avg_quality: int, phred_offset: Optional[int]) -> List[SequenceRecord]:
     """Filters sequences by average quality below minimum threshold."""
+    if not records:
+        raise ValueError("No records provided to filter.")
+    if records[0].quality is None:
+        raise ValueError("Quality filtering requires FASTQ input with quality scores.")
     phred_offset = resolve_phred_offset(records, phred_offset)
     filtered_records = []
     average_quality_per_seq = get_average_quality_per_sequence(records, phred_offset)
@@ -46,8 +50,12 @@ def filter_by_quality(records: List[SequenceRecord], min_avg_quality: int, phred
             filtered_records.append(seq)
     return filtered_records
 
-def filter_by_position_quality(records: List[SequenceRecord], position_threshold: int, phred_offset: Optional[int]) -> List[SequenceRecord]:
+def filter_by_min_quality(records: List[SequenceRecord], min_quality: int, phred_offset: Optional[int]) -> List[SequenceRecord]:
     """Filters out sequences containing any base with a quality score below the given threshold."""
+    if not records:
+        raise ValueError("No records provided to filter.")
+    if records[0].quality is None:
+        raise ValueError("Quality filtering requires FASTQ input with quality scores.")
     phred_offset = resolve_phred_offset(records, phred_offset)
     filtered_records = []
     for seq in records:
@@ -55,7 +63,7 @@ def filter_by_position_quality(records: List[SequenceRecord], position_threshold
         if not quality:
             continue
         numeric = phred_to_numeric(quality, phred_offset)
-        if all(score > position_threshold for score in numeric):
+        if all(score > min_quality for score in numeric):
             filtered_records.append(seq)
     return filtered_records
 
@@ -78,6 +86,10 @@ def trim_low_quality_ends(sequence: str, quality: str, threshold: int, phred_off
 
 def trim_records_by_quality(records: List[SequenceRecord], threshold: int, phred_offset: Optional[int]) -> List[SequenceRecord]:
     """Trims low quality bases from both ends of all sequences in a record."""
+    if not records:
+        raise ValueError("No records provided to filter.")
+    if records[0].quality is None:
+        raise ValueError("Quality filtering requires FASTQ input with quality scores.")
     phred_offset = resolve_phred_offset(records, phred_offset)
     trimmed = []
     for seq in records:

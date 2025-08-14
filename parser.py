@@ -55,7 +55,7 @@ class SequenceParser:
         # loop through lines and extract sequence id and sequence
         for line in file_handle:
             line = line.strip()
-            if line[0] == ">":
+            if line.startswith(">"):
                 # already have a sequence id; yield previous sequence id and sequence 
                 if sequence_id is not None: 
                     yield SequenceRecord(sequence_id, ''.join(sequence))
@@ -68,6 +68,34 @@ class SequenceParser:
         # yield last sequence id and sequence in file
         if sequence_id is not None:
             yield SequenceRecord(sequence_id, ''.join(sequence))
-
-    
-
+        
+    def parse_fastq(self, file_handle):
+        sequence_id = None
+        sequence = []
+        quality = []
+        reading_quality = False
+        # loop through lines and extract sequence id, sequence, and quality score
+        for line in file_handle:
+            line = line.strip()
+            if not line:
+                continue
+            if line.startswith("@"):
+                # already have a sequence id; yield previous sequence id, sequence, and quality score
+                if sequence_id is not None:
+                    yield SequenceRecord(sequence_id, ''.join(sequence), ''.join(quality))
+                #reset for next sequence
+                sequence_id = line[1:] 
+                sequence = []   
+                quality = []
+                reading_quality = False
+            elif line.startswith("+"):
+                # read quality lines
+                reading_quality = True
+            elif reading_quality:
+                quality.append(line)
+            else:
+                # if sequence spans multiple lines, add to previous
+                sequence.append(line)
+        # yield last sequence id and sequence in file
+        if sequence_id is not None:
+            yield SequenceRecord(sequence_id, ''.join(sequence), ''.join(quality))

@@ -5,6 +5,10 @@ from typing import List, Optional, Dict, Union
 def resolve_phred_offset(records: List[SequenceRecord], offset: Optional[int]) -> int:
     """Returns a valid phred offset (33 or 64), detecting it from records if not provided.
 Raises ValueError if detection fails or is ambiguous."""
+    if not records:
+        raise ValueError("No records provided to filter.")
+    if records[0].quality is None:
+        raise ValueError("Quality filtering requires FASTQ input with quality scores.")
     if offset is None:
         offset = detect_phred_encoding(records)
     if offset not in [33, 64]:
@@ -31,6 +35,10 @@ def numeric_to_phred(numeric_scores: List[int], phred_offset: int) -> str:
 
 def detect_phred_encoding(records: List[SequenceRecord]) -> Union[str,int]:
     """Detects encoding based on quality sequence in records list. Returns 33, 64, or unknown/ambiguous."""
+    if not records:
+        raise ValueError("No records provided to filter.")
+    if records[0].quality is None:
+        raise ValueError("Quality filtering requires FASTQ input with quality scores.")
     min_value = 130 #arbitrary high number
     max_value = 0 
     for seq in records:
@@ -52,6 +60,10 @@ def calculate_average_quality(
         records: List[SequenceRecord], 
         phred_offset: Optional[int]) -> float:
     """Calculates the average quality of all sequences in a list of records."""
+    if not records:
+        raise ValueError("No records provided to filter.")
+    if records[0].quality is None:
+        raise ValueError("Quality filtering requires FASTQ input with quality scores.")
     phred_offset = resolve_phred_offset(records, phred_offset)
     total_score = 0
     total_bases = 0 
@@ -69,6 +81,10 @@ def analyze_quality_by_position(
         records: List[SequenceRecord], 
         phred_offset: Optional[int]) -> List[float]:
     """Calculates the average quality score for each position across all sequences, returning a list of averages."""
+    if not records:
+        raise ValueError("No records provided to filter.")
+    if records[0].quality is None:
+        raise ValueError("Quality filtering requires FASTQ input with quality scores.")
     phred_offset = resolve_phred_offset(records, phred_offset)
     position_sums = {}
     position_counts = {}
@@ -87,6 +103,10 @@ def get_average_quality_per_sequence(
         records: List[SequenceRecord], 
         phred_offset: Optional[int]) -> Dict[str, float]:
     """Calculates the average quality score per sequence in a list of sequence records, returning a dictionary of averages."""
+    if not records:
+        raise ValueError("No records provided to filter.")
+    if records[0].quality is None:
+        raise ValueError("Quality filtering requires FASTQ input with quality scores.")
     phred_offset = resolve_phred_offset(records, phred_offset)
     average_quality = {}
     for seq in records:
@@ -103,6 +123,10 @@ def get_quality_distribution(
         records: List[SequenceRecord], 
         phred_offset: Optional[int]) -> Dict[int, int]:
     """Counts the occurrences of each quality score in a list of sequence records."""
+    if not records:
+        raise ValueError("No records provided to filter.")
+    if records[0].quality is None:
+        raise ValueError("Quality filtering requires FASTQ input with quality scores.")
     phred_offset = resolve_phred_offset(records, phred_offset)
     distribution = defaultdict(int)
     for seq in records:
@@ -114,8 +138,13 @@ def get_quality_distribution(
 
 def find_low_quality_positions(
         records: List[SequenceRecord], 
-        threshold: int, phred_offset: Optional[int]) -> Dict[int, List[int]]:
+        threshold: int, 
+        phred_offset: Optional[int]) -> Dict[int, List[int]]:
     """Finds the positions of each read below given threshold in a list of sequence records."""
+    if not records:
+        raise ValueError("No records provided to filter.")
+    if records[0].quality is None:
+        raise ValueError("Quality filtering requires FASTQ input with quality scores.")
     phred_offset = resolve_phred_offset(records, phred_offset)
     low_quality = {}
     for seq in records:
@@ -135,6 +164,10 @@ def get_quality_stats(
     threshold: int
 ) -> Dict[str, Union[float, int, str, Dict[int, int], List[float], int]]:
     """Returns a dictionary summarizing quality stats."""
+    if not records:
+        raise ValueError("No records provided to filter.")
+    if records[0].quality is None:
+        raise ValueError("Quality filtering requires FASTQ input with quality scores.")
     phred_offset = resolve_phred_offset(records, phred_offset)
     overall_avg = calculate_average_quality(records, phred_offset)
     avg_by_position = analyze_quality_by_position(records, phred_offset)
